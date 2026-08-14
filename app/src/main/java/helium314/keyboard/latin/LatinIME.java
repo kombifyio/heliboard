@@ -1412,7 +1412,9 @@ public class LatinIME extends InputMethodService implements
     // completely replace #onCodeInput.
     public void onEvent(@NonNull final Event event) {
         if (KeyCode.VOICE_INPUT == event.getKeyCode()) {
-            mRichImm.switchToShortcutIme(this);
+            // SpeechKit: dictate in place when a host is attached, otherwise
+            // upstream's hand-off to another IME. See SpeechKitVoiceBridge.
+            SpeechKitVoiceBridge.onVoiceKey(this, () -> mRichImm.switchToShortcutIme(this));
         }
         final InputTransaction completeInputTransaction =
                 mInputLogic.onCodeInput(mSettings.getCurrent(), event,
