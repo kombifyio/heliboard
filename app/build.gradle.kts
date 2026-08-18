@@ -2,9 +2,16 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.library")
-    kotlin("android") // upstream dropped this (AGP 9 compiles Kotlin itself); the consuming SpeechKit build is on AGP 8
-    kotlin("plugin.serialization") version "2.4.0"
-    kotlin("plugin.compose") version "2.4.0"
+    // Upstream dropped this line (AGP 9 compiles Kotlin itself). The consuming
+    // kombify-SpeechKit build is still on AGP 8, where the Kotlin plugin has to
+    // be applied explicitly; remove it when SpeechKit moves to AGP 9.
+    kotlin("android")
+    // Versions come from the consuming build's plugin management, not from here:
+    // this module is compiled inside kombify-SpeechKit's Gradle build, where the
+    // Kotlin plugin can only be on the classpath once. Upstream's own build still
+    // supplies 2.4.0 through its root buildscript.
+    kotlin("plugin.serialization")
+    kotlin("plugin.compose")
 }
 
 android {
