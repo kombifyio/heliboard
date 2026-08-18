@@ -17,7 +17,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class App : Application() {
+// SpeechKit: open so the consuming application class can extend it. An APK has
+// exactly one Application, and everything this one sets up -- settings,
+// subtypes, RichInputMethodManager, the static JniUtils reads -- has to run.
+open class App : Application() {
     override fun onCreate() {
         super.onCreate()
         DebugFlags.init(this)
