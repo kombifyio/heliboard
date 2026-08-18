@@ -3,8 +3,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     id("com.android.library")
     kotlin("android")
-    kotlin("plugin.serialization") version "2.3.20"
-    kotlin("plugin.compose") version "2.3.20"
+    // Versions come from the consuming build's plugin management, not from here:
+    // this module is compiled inside kombify-SpeechKit's Gradle build, where the
+    // Kotlin plugin can only be on the classpath once. Upstream's own build still
+    // supplies 2.3.20 through its root buildscript.
+    kotlin("plugin.serialization")
+    kotlin("plugin.compose")
 }
 
 android {
