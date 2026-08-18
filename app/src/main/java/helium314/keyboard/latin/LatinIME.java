@@ -1036,6 +1036,9 @@ public class LatinIME extends InputMethodService implements
     void onFinishInputViewInternal(final boolean finishingInput) {
         super.onFinishInputView(finishingInput);
         Log.i(TAG, "onFinishInputView");
+        // SpeechKit: drop the dictation panel, so the next time this keyboard
+        // is shown it is keys and not a leftover panel.
+        SpeechKitVoiceBridge.onFinishInputView();
         cleanupInternalStateForFinishInput();
     }
 

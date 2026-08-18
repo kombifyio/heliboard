@@ -40,7 +40,11 @@ object SpeechKitVoiceBridge {
          * password field, for instance — so the caller can fall back rather
          * than leave the key dead.
          */
-        fun showPanel(inputConnection: InputConnection, editorInfo: EditorInfo): Boolean
+        fun showPanel(
+            service: InputMethodService,
+            inputConnection: InputConnection,
+            editorInfo: EditorInfo,
+        ): Boolean
 
         /** Releases the editor and stops any capture. */
         fun hidePanel()
@@ -70,7 +74,19 @@ object SpeechKitVoiceBridge {
         val handled = current != null &&
             connection != null &&
             editor != null &&
-            current.showPanel(connection, editor)
+            current.showPanel(service, connection, editor)
         if (!handled) fallback.run()
+    }
+
+    /**
+     * Drops the panel when the input view goes away.
+     *
+     * Without this the panel stays installed as the input view, and the next
+     * time the keyboard is asked to appear the user gets the dictation panel
+     * instead of keys.
+     */
+    @JvmStatic
+    fun onFinishInputView() {
+        host?.hidePanel()
     }
 }
