@@ -1,7 +1,8 @@
-import com.android.build.api.variant.ApplicationVariant
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("com.android.application")
+    id("com.android.library")
+    kotlin("android") // upstream dropped this (AGP 9 compiles Kotlin itself); the consuming SpeechKit build is on AGP 8
     kotlin("plugin.serialization") version "2.4.0"
     kotlin("plugin.compose") version "2.4.0"
 }
@@ -10,65 +11,40 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "helium314.keyboard"
         minSdk = 21
+        // A library ignores targetSdk for packaging, but Robolectric reads it to pick
+        // the emulated SDK level, and ContextCompat.registerReceiver branches on that:
+        // below 34 it emulates RECEIVER_NOT_EXPORTED via a runtime permission check that
+        // LatinIME.onCreate cannot satisfy under test. Keep it at upstream's value.
+        @Suppress("DEPRECATION")
         targetSdk = 37
-        versionCode = 4300
-        versionName = "4.3-beta1"
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
         }
-        proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        // Shipped to whichever app consumes this library; the consumer runs
+        // minification, this module does not.
+        consumerProguardFiles("proguard-rules.pro")
+
+        // A library generates no VERSION_NAME/VERSION_CODE. Both are pinned to
+        // the upstream release this fork tracks rather than to the consuming
+        // app's version, because that is what they mean here: AppUpgrade keys
+        // its settings migrations off VERSION_CODE, and every other reader
+        // reports the keyboard engine's version, not the product's.
+        buildConfigField("String", "VERSION_NAME", "\"4.3-beta1\"")
+        buildConfigField("int", "VERSION_CODE", "4300")
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = false
-            isDebuggable = false
-            isJniDebuggable = false
         }
         create("nouserlib") { // same as release, but does not allow the user to provide a library
-            isMinifyEnabled = true
-            isShrinkResources = false
-            isDebuggable = false
-            isJniDebuggable = false
         }
         debug {
-            // "normal" debug has minify for smaller APK to fit the GitHub 25 MB limit when zipped
-            // and for better performance in case users want to install a debug APK
-            isMinifyEnabled = true
-            isJniDebuggable = false
-            applicationIdSuffix = ".debug"
         }
         create("runTests") { // build variant for running tests on CI that skips tests known to fail
-            isMinifyEnabled = false
-            isJniDebuggable = false
         }
         create("debugNoMinify") { // for faster builds in IDE
-            isDebuggable = true
-            isMinifyEnabled = false
-            isJniDebuggable = false
-            signingConfig = signingConfigs.getByName("debug")
-            applicationIdSuffix = ".debug"
-            //isDefault = true // would be nice as default, but breaks unit test handling in Android Studio
-        }
-
-        androidComponents.onVariants { variant: ApplicationVariant ->
-            if (variant.buildType == "debug") {
-                // got a little too big for GitHub after some dependency upgrades, so we remove the largest dictionary
-                variant.androidResources.ignoreAssetsPatterns = listOf("main_ro.dict")
-                variant.proguardFiles = emptyList()
-                //noinspection ProguardAndroidTxtUsage we intentionally use the "normal" file here
-                variant.proguardFiles.add(project.layout.buildDirectory.file(project.buildFile.parent + "/dontoptimize.pro"))
-                variant.proguardFiles.add(project.layout.buildDirectory.file(project.buildFile.parent + "/proguard-rules.pro"))
-            }
-            variant.outputs.forEach { output ->
-                if (output is com.android.build.api.variant.impl.VariantOutputImpl) {
-                    output.outputFileName = "HeliBoard_${defaultConfig.versionName}-${variant.buildType}.apk"
-                }
-            }
         }
     }
 
@@ -85,13 +61,6 @@ android {
     }
     ndkVersion = "28.0.13004108"
 
-    packaging {
-        jniLibs {
-            // shrinks APK by 3 MB, zipped size unchanged
-            useLegacyPackaging = true
-        }
-    }
-
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -103,10 +72,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // see https://github.com/HeliBorg/HeliBoard/issues/477
-    dependenciesInfo {
-        includeInApk = false
-        includeInBundle = false
+    // Upstream derives the Kotlin jvmTarget from compileOptions under AGP 9; with
+    // the explicit Kotlin plugin of an AGP 8 consumer it is set here.
+    kotlin {
+        target {
+            compilerOptions {
+                jvmTarget.set(JvmTarget.JVM_17)
+            }
+        }
     }
 
     namespace = "helium314.keyboard.latin"
