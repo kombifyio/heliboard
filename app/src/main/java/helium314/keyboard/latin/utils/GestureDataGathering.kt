@@ -186,7 +186,11 @@ private fun isBackgroundGatheringUsed(context: Context, editorInfo: EditorInfo):
     return true
 }
 
-const val dictTestImeOption = "useTestDictionaryFacilitator,${BuildConfig.APPLICATION_ID}.${Constants.ImeOption.NO_FLOATING_GESTURE_PREVIEW}"
+// SpeechKit: upstream namespaces this private IME option with BuildConfig.APPLICATION_ID,
+// which a library module does not generate. The value is only ever compared against
+// itself -- GestureDataScreen sets it, GestureDataGatheringSettings reads it back --
+// so it just has to stay stable and collision-free, not match the consuming app id.
+const val dictTestImeOption = "useTestDictionaryFacilitator,helium314.keyboard.${Constants.ImeOption.NO_FLOATING_GESTURE_PREVIEW}"
 
 var gestureDataActiveFacilitator: SingleDictionaryFacilitator? = null
 

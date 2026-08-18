@@ -41,8 +41,6 @@ public final class JniUtils {
 
     public static boolean sHaveGestureLib = false;
     static {
-        // hardcoded default path, may not work on all phones
-        @SuppressLint("SdCardPath") String filesDir = "/data/data/" + BuildConfig.APPLICATION_ID + "/files";
         Application app = App.Companion.getApp();
         if (app == null) {
             try {
@@ -52,13 +50,20 @@ public final class JniUtils {
                         .getMethod("currentApplication").invoke(null, (Object[]) null);
             } catch (Exception ignored) { }
         }
-        if (app != null && app.getFilesDir() != null) // use the actual path if possible
-            filesDir = app.getFilesDir().getAbsolutePath();
+        // SpeechKit: upstream falls back to a hardcoded "/data/data/<APPLICATION_ID>/files"
+        // when no context is reachable. A library module has no APPLICATION_ID, and guessing
+        // the consuming app's id would point at a directory that does not exist. Without a
+        // context there is no user-supplied library to find, so say so instead of guessing.
+        final String filesDir = app != null && app.getFilesDir() != null
+                ? app.getFilesDir().getAbsolutePath()
+                : null;
 
         File userSuppliedLibrary;
         try {
-            userSuppliedLibrary = new File(filesDir + File.separator + JNI_LIB_IMPORT_FILE_NAME);
-            if (!userSuppliedLibrary.isFile())
+            userSuppliedLibrary = filesDir == null
+                    ? null
+                    : new File(filesDir + File.separator + JNI_LIB_IMPORT_FILE_NAME);
+            if (userSuppliedLibrary != null && !userSuppliedLibrary.isFile())
                 userSuppliedLibrary = null;
         } catch (Exception e) {
             userSuppliedLibrary = null;
