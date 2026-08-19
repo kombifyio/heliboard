@@ -98,11 +98,19 @@ public final class InputAttributes {
 
         mShouldInsertSpacesAutomatically = InputTypeUtils.isAutoSpaceFriendlyType(mInputType);
 
+        // SpeechKit: the shortcut-IME term is an availability rule, not a privacy rule. Upstream
+        // hides the voice key when no other IME is enabled to hand off to, because without one the
+        // key would do nothing. This fork answers the key itself through SpeechKitVoiceBridge, so
+        // with a host registered there is nothing to hand off to and nothing to hide - requiring
+        // the user to enable a second input method first would keep the key invisible on a fresh
+        // install. The password-field and email-variation terms stay untouched: those are about
+        // where voice input must not go, and that is true of this fork's own panel too.
         final boolean noMicrophone = mIsPasswordField
                 || InputTypeUtils.isEmailVariation(variation)
                 || hasNoMicrophoneKeyOption()
                 || !RichInputMethodManager.isInitialized() // avoid crash when only using spell checker
-                || !RichInputMethodManager.getInstance().isShortcutImeReady();
+                || (!RichInputMethodManager.getInstance().isShortcutImeReady()
+                        && SpeechKitVoiceBridge.getHost() == null);
         mShouldShowVoiceInputKey = !noMicrophone;
 
         mDisableGestureFloatingPreviewText = InputAttributes.inPrivateImeOptions(
