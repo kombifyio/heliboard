@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 package helium314.keyboard.latin
 
+import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
@@ -53,6 +54,18 @@ object SpeechKitVoiceBridge {
 
         /** Releases the editor and stops any capture. */
         fun hidePanel()
+
+        /**
+         * The icon to draw on one of SpeechKit's toolbar keys, or null to keep
+         * the fork's own.
+         *
+         * The host owns this because the choice is the user's: which glyph
+         * stands for which mode is a SpeechKit setting, and the fork has no
+         * business carrying that preference or the drawables behind it. Asked
+         * on every key build, so it must be cheap and must not touch the
+         * network.
+         */
+        fun iconFor(action: String): Drawable?
 
         /** Tells the host which input method service is current. */
         fun onInputViewStarted(service: InputMethodService)
@@ -134,6 +147,13 @@ object SpeechKitVoiceBridge {
      * so nothing happens and nothing crashes. A non-null [reason] is a short
      * message the caller should show; the fork words nothing itself.
      */
+    /**
+     * The host's icon for [action], or null when there is no host or it has
+     * no opinion - in which case the fork draws the glyph it ships with.
+     */
+    @JvmStatic
+    fun iconFor(action: String): Drawable? = host?.iconFor(action)
+
     @JvmStatic
     fun onToolbarAction(action: String, reason: (String) -> Unit): Boolean {
         val current = host ?: return false
