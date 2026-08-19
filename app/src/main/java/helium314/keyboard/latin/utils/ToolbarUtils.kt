@@ -33,7 +33,11 @@ fun createToolbarKey(context: Context, key: ToolbarKey): ImageButton {
     button.tag = key
     button.contentDescription = key.name.lowercase().getStringResourceOrName("", context)
     setToolbarButtonActivatedState(button)
-    button.setImageDrawable(KeyboardIconsSet.instance.getNewDrawable(key.name, context))
+    // SpeechKit's keys let the host choose the glyph, because which symbol
+    // stands for which mode is a user setting on that side. Anything the host
+    // declines, and every upstream key, keeps the fork's own icon.
+    val hostIcon = if (key.name.startsWith("SPEECHKIT_")) SpeechKitVoiceBridge.iconFor(key.name) else null
+    button.setImageDrawable(hostIcon ?: KeyboardIconsSet.instance.getNewDrawable(key.name, context))
     return button
 }
 
