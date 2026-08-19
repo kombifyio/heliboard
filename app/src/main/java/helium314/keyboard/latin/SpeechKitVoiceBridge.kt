@@ -6,13 +6,18 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 
 /**
- * The whole SpeechKit patch surface, kept to one file plus one call site in
+ * The whole SpeechKit patch surface, kept to one file plus three call sites in
  * [LatinIME].
  *
  * Upstream answers the voice key by handing the user off to another input
  * method (`switchToShortcutIme`). SpeechKit answers it in place: the keyboard
  * stays, a dictation panel takes over its window, and the text lands in the
- * same editor. That is the only behavioural difference this fork carries.
+ * same editor.
+ *
+ * The second difference is the action row above the keys. It is not a reaction
+ * to a key press, so it cannot ride on the voice key: it has to be mounted
+ * while the input view is being started and dropped when it finishes, which is
+ * why the bridge carries the input view's lifecycle as well.
  *
  * The bridge deliberately declares its own [Host] interface instead of
  * depending on SpeechKit. Two reasons, and both are about keeping the fork
@@ -26,12 +31,12 @@ import android.view.inputmethod.InputConnection
  *   adapter lives on that side of the licence boundary.
  *
  * It lives in the `helium314.keyboard.latin` package on purpose: same package
- * as [LatinIME], so the call site needs no import and the diff against
- * upstream is a single line.
+ * as [LatinIME], so no call site needs an import and the diff against upstream
+ * is one line per hook.
  */
 object SpeechKitVoiceBridge {
 
-    /** What a host must be able to do for the voice key to be handled here. */
+    /** What a host must be able to do for this fork to defer to it. */
     interface Host {
         /**
          * Takes over the keyboard window for dictation into [inputConnection].
@@ -48,6 +53,25 @@ object SpeechKitVoiceBridge {
 
         /** Releases the editor and stops any capture. */
         fun hidePanel()
+
+        /**
+         * Fills and shows the `speechkit_action_row` container in the
+         * keyboard's input view.
+         *
+         * The fork owns the container and its place in the layout; the host
+         * owns everything drawn in it. The container is GONE until a host
+         * shows it, so a keyboard with no host keeps upstream's geometry to
+         * the pixel.
+         *
+         * Called from every `onStartInputView`, so it has to be idempotent.
+         * That is the earliest hook that runs before the user presses
+         * anything, which is what an always-visible row needs and what no
+         * voice-key callback can offer.
+         */
+        fun attachActionRow(service: InputMethodService)
+
+        /** Empties the action row container again and releases what fed it. */
+        fun detachActionRow()
     }
 
     /**
@@ -79,14 +103,33 @@ object SpeechKitVoiceBridge {
     }
 
     /**
-     * Drops the panel when the input view goes away.
+     * Offers the input view to the host as it starts.
      *
-     * Without this the panel stays installed as the input view, and the next
-     * time the keyboard is asked to appear the user gets the dictation panel
-     * instead of keys.
+     * The action row is the reason this exists: it is drawn before anything is
+     * pressed, so nothing on the voice key's path can put it there. Passing
+     * the service rather than the container keeps the fork out of the host's
+     * view lookups, exactly as [onVoiceKey] does.
+     *
+     * A no-op with no host, so the fork still starts input views the way
+     * upstream does.
+     */
+    @JvmStatic
+    fun onStartInputView(service: InputMethodService) {
+        host?.attachActionRow(service)
+    }
+
+    /**
+     * Drops the panel and the action row when the input view goes away.
+     *
+     * Without the first, the panel stays installed as the input view, and the
+     * next time the keyboard is asked to appear the user gets the dictation
+     * panel instead of keys. Without the second, the row keeps a composition
+     * alive against a window that is being torn down.
      */
     @JvmStatic
     fun onFinishInputView() {
-        host?.hidePanel()
+        val current = host ?: return
+        current.hidePanel()
+        current.detachActionRow()
     }
 }

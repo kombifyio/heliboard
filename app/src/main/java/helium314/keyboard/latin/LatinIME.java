@@ -896,6 +896,11 @@ public class LatinIME extends InputMethodService implements
             return;
         }
 
+        // SpeechKit: hand the input view to the host so it can mount its action row. This is the
+        // first point in this method where the view is known to exist, and the row has to be there
+        // before anything is pressed, so no voice-key callback can put it there.
+        SpeechKitVoiceBridge.onStartInputView(this);
+
         // Update to a gesture consumer with the current editor and IME state.
         mGestureConsumer = GestureConsumer.newInstance(editorInfo,
                 mInputLogic.getPrivateCommandPerformer(),
@@ -1036,8 +1041,9 @@ public class LatinIME extends InputMethodService implements
     void onFinishInputViewInternal(final boolean finishingInput) {
         super.onFinishInputView(finishingInput);
         Log.i(TAG, "onFinishInputView");
-        // SpeechKit: drop the dictation panel, so the next time this keyboard
-        // is shown it is keys and not a leftover panel.
+        // SpeechKit: drop the dictation panel and the action row, so the next time this keyboard
+        // is shown it is keys and not a leftover panel, and nothing is left composing against a
+        // window that is going away.
         SpeechKitVoiceBridge.onFinishInputView();
         cleanupInternalStateForFinishInput();
     }
@@ -1202,7 +1208,11 @@ public class LatinIME extends InputMethodService implements
             return;
         }
         final int stripHeight = mKeyboardSwitcher.isShowingStripContainer() ? mKeyboardSwitcher.getStripContainer().getHeight() : 0;
-        int visibleTopY = inputHeight - visibleKeyboardView.getHeight() - stripHeight;
+        // SpeechKit: the action row is stacked above the keyboard frame, so the window has to reach that much
+        // further up. Everything here is measured from the frame alone, and a row the window does not account
+        // for is drawn and then ignored by the touch dispatcher.
+        final int speechKitActionRowHeight = getSpeechKitActionRowHeight();
+        int visibleTopY = inputHeight - visibleKeyboardView.getHeight() - stripHeight - speechKitActionRowHeight;
         if (Settings.getValues().mIsFloatingKeyboard)
             visibleTopY = getResources().getDisplayMetrics().heightPixels;
 
@@ -1221,7 +1231,7 @@ public class LatinIME extends InputMethodService implements
                 touchLeft = xy.component1();
                 touchTop = xy.component2();
                 touchRight = touchLeft + mSettings.getCurrent().mFloatingWidth;
-                touchBottom = touchTop + mSettings.getCurrent().mFloatingHeight + stripHeight + (int)FloatingKeyboardUtils.getFloatingHandleHeight(getResources());
+                touchBottom = touchTop + mSettings.getCurrent().mFloatingHeight + stripHeight + speechKitActionRowHeight + (int)FloatingKeyboardUtils.getFloatingHandleHeight(getResources());
             }
             outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION;
             outInsets.touchableRegion.set(touchLeft, touchTop, touchRight, touchBottom);
@@ -1233,6 +1243,36 @@ public class LatinIME extends InputMethodService implements
         outInsets.contentTopInsets = visibleTopY;
         outInsets.visibleTopInsets = visibleTopY;
         mInsetsUpdater.setInsets(outInsets);
+    }
+
+    /**
+     * Height of the SpeechKit action row, or zero while it is not showing.
+     *
+     * The row sits above the keyboard frame in input_view.xml, and the three numbers
+     * {@link #onComputeInsets} derives are all measured from that frame alone. The window's
+     * visible top and the touchable region have to include the row or it is drawn and then
+     * ignored by the touch dispatcher.
+     *
+     * The more-suggestions budget takes the same number deliberately. It answers "how far above
+     * the top of the IME's own content may that panel grow", and the top of this fork's content is
+     * the row, not the suggestion strip. The panel is anchored at the strip and grows upward
+     * ({@code MoreSuggestionsView}), so it still covers the row - it simply stops one row height
+     * short of the screen top instead of reaching it. That costs at most one suggestion row, and
+     * it keeps a single definition of where the keyboard begins rather than two that disagree.
+     *
+     * With no SpeechKit host installed the row stays GONE, this returns zero, and all three
+     * numbers are upstream's to the pixel.
+     */
+    private int getSpeechKitActionRowHeight() {
+        if (mInputView == null) {
+            return 0;
+        }
+        final View actionRow = mInputView.findViewById(R.id.speechkit_action_row);
+        // A GONE view keeps the height it last had, so ask about visibility rather than getHeight().
+        if (actionRow == null || actionRow.getVisibility() != View.VISIBLE) {
+            return 0;
+        }
+        return actionRow.getHeight();
     }
 
     public void startShowingInputView(final boolean needsToLoadKeyboard) {
