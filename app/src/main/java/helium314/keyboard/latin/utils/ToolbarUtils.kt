@@ -17,6 +17,8 @@ import helium314.keyboard.latin.AudioAndHapticFeedbackManager
 import helium314.keyboard.latin.R
 import helium314.keyboard.latin.common.Constants.Separators
 import helium314.keyboard.latin.settings.Defaults
+import helium314.keyboard.keyboard.KeyboardSwitcher
+import helium314.keyboard.latin.SpeechKitVoiceBridge
 import helium314.keyboard.latin.settings.Settings
 import helium314.keyboard.latin.utils.ToolbarKey.*
 import kotlinx.coroutines.GlobalScope
@@ -62,6 +64,10 @@ private fun setToolbarButtonActivatedState(button: ImageButton) {
 }
 
 fun getCodeForToolbarKey(key: ToolbarKey) = Settings.getInstance().getCustomToolbarKeyCode(key) ?: when (key) {
+    // UNSPECIFIED on purpose: onClickToolbarKey never reaches the listener for
+    // these, and without a SpeechKit host they must do nothing at all.
+    SPEECHKIT_DICTATE_DEVICE, SPEECHKIT_DICTATE_SERVER, SPEECHKIT_AGENT_DEEPGRAM,
+    SPEECHKIT_AGENT_ASSEMBLYAI, SPEECHKIT_AGENT_GPT, SPEECHKIT_COMPANION -> KeyCode.UNSPECIFIED
     VOICE -> KeyCode.VOICE_INPUT
     CLIPBOARD -> KeyCode.CLIPBOARD
     NUMPAD -> KeyCode.NUMPAD
@@ -119,6 +125,13 @@ fun getCodeForToolbarKeyLongClick(key: ToolbarKey) = Settings.getInstance().getC
 
 // names need to be aligned with resources strings (using lowercase of key.name)
 enum class ToolbarKey {
+    // SpeechKit's own keys. They carry no KeyCode: getCodeForToolbarKey maps
+    // them to UNSPECIFIED so a standalone build ignores them entirely, and
+    // onClickToolbarKey offers them to SpeechKitVoiceBridge first. Their names
+    // are the icon and content-description lookup keys, so renaming one is a
+    // resource change too.
+    SPEECHKIT_DICTATE_DEVICE, SPEECHKIT_DICTATE_SERVER, SPEECHKIT_AGENT_DEEPGRAM,
+    SPEECHKIT_AGENT_ASSEMBLYAI, SPEECHKIT_AGENT_GPT, SPEECHKIT_COMPANION,
     VOICE, CLIPBOARD, NUMPAD, DPAD, UNDO, REDO, SETTINGS, SELECT_ALL, SELECT_WORD, COPY, CUT, PASTE, ONE_HANDED, FLOATING, SPLIT,
     INCOGNITO, AUTOCORRECT, CLEAR_CLIPBOARD, CLOSE_HISTORY, EMOJI, LEFT, RIGHT, UP, DOWN, WORD_LEFT, WORD_RIGHT,
     PAGE_UP, PAGE_DOWN, FULL_LEFT, FULL_RIGHT, PAGE_START, PAGE_END, BACKGROUND_GATHERING
@@ -143,7 +156,15 @@ val defaultToolbarPref by lazy {
 // the toolbar expander reads as a keyboard that cannot dictate at all. Entry
 // order is render order in SuggestionStripView.pinnedKeys, so VOICE goes first.
 val defaultPinnedToolbarPref = run {
-    val pinned = listOf(VOICE)
+    val pinned = listOf(
+        VOICE,
+        SPEECHKIT_DICTATE_DEVICE,
+        SPEECHKIT_DICTATE_SERVER,
+        SPEECHKIT_AGENT_DEEPGRAM,
+        SPEECHKIT_AGENT_ASSEMBLYAI,
+        SPEECHKIT_AGENT_GPT,
+        SPEECHKIT_COMPANION,
+    )
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
@@ -260,7 +281,20 @@ fun clearCustomToolbarKeyCodes() {
 
 fun onClickToolbarKey(view: View, onCodeInput: (Int) -> Unit) {
     AudioAndHapticFeedbackManager.getInstance().performHapticAndAudioFeedback(KeyCode.NOT_SPECIFIED, view, HapticEvent.KEY_PRESS)
-    val code = getCodeForToolbarKey(view.tag as ToolbarKey)
+    val key = view.tag as ToolbarKey
+    // SpeechKit's keys are answered here rather than through a KeyCode,
+    // because this is the last point that still knows WHICH key was pressed -
+    // the listener downstream only ever sees the code, and six actions cannot
+    // be told apart by one. A standalone build has no host, falls through, and
+    // resolves UNSPECIFIED, which does nothing.
+    if (key.name.startsWith("SPEECHKIT_") &&
+        SpeechKitVoiceBridge.onToolbarAction(key.name) { reason ->
+            KeyboardSwitcher.getInstance().showToolbarActionRefusal(reason)
+        }
+    ) {
+        return
+    }
+    val code = getCodeForToolbarKey(key)
     if (code != KeyCode.UNSPECIFIED) {
         onCodeInput(code)
     }
