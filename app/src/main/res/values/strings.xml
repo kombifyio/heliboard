@@ -350,6 +350,12 @@
     <string name="clipboard" tools:keep="@string/clipboard">Clipboard</string>
     <string name="clear_clipboard" tools:keep="@string/clear_clipboard">Clear clipboard</string>
     <string name="voice" tools:keep="@string/voice">Voice input</string>
+    <string name="speechkit_dictate_device" tools:keep="@string/speechkit_dictate_device">Dictate on device</string>
+    <string name="speechkit_dictate_server" tools:keep="@string/speechkit_dictate_server">Dictate via SpeechKit server</string>
+    <string name="speechkit_agent_deepgram" tools:keep="@string/speechkit_agent_deepgram">Voice agent: Deepgram</string>
+    <string name="speechkit_agent_assemblyai" tools:keep="@string/speechkit_agent_assemblyai">Voice agent: AssemblyAI</string>
+    <string name="speechkit_agent_gpt" tools:keep="@string/speechkit_agent_gpt">Voice agent: GPT</string>
+    <string name="speechkit_companion" tools:keep="@string/speechkit_companion">kombify Companion</string>
     <string name="numpad" tools:keep="@string/numpad" translatable="false">@string/layout_numpad</string>
     <string name="dpad" tools:keep="@string/dpad" translatable="false">@string/layout_dpad</string>
     <string name="settings" tools:keep="@string/settings">Settings</string>

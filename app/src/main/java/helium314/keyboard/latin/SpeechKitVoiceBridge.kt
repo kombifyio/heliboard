@@ -54,24 +54,24 @@ object SpeechKitVoiceBridge {
         /** Releases the editor and stops any capture. */
         fun hidePanel()
 
-        /**
-         * Fills and shows the `speechkit_action_row` container in the
-         * keyboard's input view.
-         *
-         * The fork owns the container and its place in the layout; the host
-         * owns everything drawn in it. The container is GONE until a host
-         * shows it, so a keyboard with no host keeps upstream's geometry to
-         * the pixel.
-         *
-         * Called from every `onStartInputView`, so it has to be idempotent.
-         * That is the earliest hook that runs before the user presses
-         * anything, which is what an always-visible row needs and what no
-         * voice-key callback can offer.
-         */
-        fun attachActionRow(service: InputMethodService)
+        /** Tells the host which input method service is current. */
+        fun onInputViewStarted(service: InputMethodService)
 
-        /** Empties the action row container again and releases what fed it. */
-        fun detachActionRow()
+        /**
+         * Handles one of SpeechKit's own toolbar keys.
+         *
+         * The keyboard, not SpeechKit, owns the toolbar the key sits in, so
+         * the fork asks rather than hands over a container: it reports which
+         * of its own keys was pressed and lets the host decide what that
+         * means. [onStartInputView] has already told the host which service
+         * is current, so nothing has to be threaded through here.
+         *
+         * Returns null when the action was taken, and a short reason to show
+         * the user when it was refused - a key that needs a paired server,
+         * say. The reason is the host's to word, because the host is the
+         * side that knows why, and this fork carries no SpeechKit strings.
+         */
+        fun onToolbarAction(action: String): String?
     }
 
     /**
@@ -115,7 +115,7 @@ object SpeechKitVoiceBridge {
      */
     @JvmStatic
     fun onStartInputView(service: InputMethodService) {
-        host?.attachActionRow(service)
+        host?.onInputViewStarted(service)
     }
 
     /**
@@ -126,10 +126,24 @@ object SpeechKitVoiceBridge {
      * panel instead of keys. Without the second, the row keeps a composition
      * alive against a window that is being torn down.
      */
+    /**
+     * Answers one of SpeechKit's toolbar keys, or reports that it did not.
+     *
+     * Returns false when no host is installed, which is what keeps these keys
+     * inert in a standalone build: the fork maps them to KeyCode.UNSPECIFIED,
+     * so nothing happens and nothing crashes. A non-null [reason] is a short
+     * message the caller should show; the fork words nothing itself.
+     */
+    @JvmStatic
+    fun onToolbarAction(action: String, reason: (String) -> Unit): Boolean {
+        val current = host ?: return false
+        val refusal = current.onToolbarAction(action)
+        if (refusal != null) reason(refusal)
+        return true
+    }
+
     @JvmStatic
     fun onFinishInputView() {
-        val current = host ?: return
-        current.hidePanel()
-        current.detachActionRow()
+        host?.hidePanel()
     }
 }

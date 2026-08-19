@@ -573,6 +573,20 @@ public final class KeyboardSwitcher implements KeyboardState.SwitchActions {
         return Settings.getValues().isSecondaryStripVisible()? View.VISIBLE : View.GONE;
     }
 
+    /**
+     * SpeechKit: shows why one of its toolbar keys did nothing.
+     *
+     * The keyboard already has the right affordance for this - the same
+     * toast it uses for its own refusals - and it is the only surface
+     * available while the keys are up. Guarded because a refusal can arrive
+     * before the input view exists, and a message nobody sees is better
+     * than a crash on a key press.
+     */
+    public void showToolbarActionRefusal(final String text) {
+        if (mFakeToastView == null) return;
+        showFakeToast(text, 2000);
+    }
+
     // Displays a toast-like message with the provided text for a specified duration.
     private void showFakeToast(final String text, final int timeMillis) {
         if (mFakeToastView.getVisibility() == View.VISIBLE) return;
