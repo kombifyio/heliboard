@@ -71,6 +71,14 @@ object SpeechKitVoiceBridge {
         fun onInputViewStarted(service: InputMethodService)
 
         /**
+         * Drops the action row when the input view goes away.
+         *
+         * Default empty so a standalone build, and any host that only answers
+         * the voice key, still compiles. The SpeechKit host fills this in.
+         */
+        fun onInputViewFinished() {}
+
+        /**
          * Handles one of SpeechKit's own toolbar keys.
          *
          * The keyboard, not SpeechKit, owns the toolbar the key sits in, so
@@ -165,5 +173,6 @@ object SpeechKitVoiceBridge {
     @JvmStatic
     fun onFinishInputView() {
         host?.hidePanel()
+        host?.onInputViewFinished()
     }
 }
