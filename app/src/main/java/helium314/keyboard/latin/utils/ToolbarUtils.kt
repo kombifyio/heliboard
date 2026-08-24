@@ -154,21 +154,13 @@ val defaultToolbarPref by lazy {
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
 }
 
-// SpeechKit: VOICE is pinned out of the box. Upstream pins nothing because its
-// voice key only hands the user off to another input method; here the same key
-// is the entry point to the product, and a fresh install that hides it behind
-// the toolbar expander reads as a keyboard that cannot dictate at all. Entry
-// order is render order in SuggestionStripView.pinnedKeys, so VOICE goes first.
+// SpeechKit strip, Gboard-shaped: suggestions occupy the middle, two voice
+// actions sit on the right (dictate, then voice agent). Extra tools live
+// behind the left expand key, which is this keyboard's "more" page. Pinning
+// six provider chips here crowded the suggestions out and read as a second
+// bar. Entry order is render order in SuggestionStripView.pinnedKeys.
 val defaultPinnedToolbarPref = run {
-    val pinned = listOf(
-        VOICE,
-        SPEECHKIT_DICTATE_DEVICE,
-        SPEECHKIT_DICTATE_SERVER,
-        SPEECHKIT_AGENT_DEEPGRAM,
-        SPEECHKIT_AGENT_ASSEMBLYAI,
-        SPEECHKIT_AGENT_GPT,
-        SPEECHKIT_COMPANION,
-    )
+    val pinned = listOf(VOICE, SPEECHKIT_AGENT_GPT)
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
