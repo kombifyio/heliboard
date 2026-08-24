@@ -13,48 +13,24 @@
         android:id="@+id/fakeToast"
         layout="@layout/fake_toast" />
 
-    <!-- SpeechKit: everything the keyboard occupies is stacked in here, pinned
-         to the bottom. In non-fullscreen mode LatinIME stretches this input
-         view to MATCH_PARENT (Ktx.updateSoftInputWindowLayoutParameters), so a
-         child of this FrameLayout with no layout_gravity lands at the top of
-         the screen instead of over the keys. -->
-    <LinearLayout
+    <!-- SpeechKit: pin the keyboard to the bottom. In non-fullscreen mode
+         LatinIME stretches this input view to MATCH_PARENT, so a child with
+         no layout_gravity lands at the top of the screen. -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:orientation="vertical">
+        android:layout_gravity="bottom">
+        <include
+            android:id="@+id/main_keyboard_frame"
+            layout="@layout/main_keyboard_frame" />
 
-        <!-- SpeechKit: an always-visible action row the host fills and shows.
-             It is GONE here, so with no SpeechKit host installed it is never
-             measured and the keyboard occupies exactly the height upstream
-             gives it. It stacks above the keyboard frame rather than
-             overlaying it. Its height is folded into the window geometry by
-             LatinIME.getSpeechKitActionRowHeight(); without that the row is
-             drawn but dead to touch. -->
+        <!-- Dictation / voice-agent panel overlays the keys. The frame stays
+             INVISIBLE rather than GONE so LatinIME's height math still holds. -->
         <FrameLayout
-            android:id="@+id/speechkit_action_row"
+            android:id="@+id/speechkit_voice_panel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
             android:visibility="gone" />
-
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-            <include
-                android:id="@+id/main_keyboard_frame"
-                layout="@layout/main_keyboard_frame" />
-
-            <!-- SpeechKit: the dictation panel is mounted here instead of
-                 replacing the whole input view. Overlaying it within the
-                 frame's own bounds keeps LatinIME's window-height and
-                 touchable-region calculations valid, and the frame below stays
-                 INVISIBLE rather than GONE so it still contributes its height. -->
-            <FrameLayout
-                android:id="@+id/speechkit_voice_panel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
-                android:visibility="gone" />
-        </FrameLayout>
-    </LinearLayout>
+    </FrameLayout>
 </helium314.keyboard.latin.InputView>
