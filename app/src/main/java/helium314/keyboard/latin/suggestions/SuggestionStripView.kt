@@ -60,6 +60,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.min
 import androidx.core.view.isGone
+import helium314.keyboard.latin.SpeechKitVoiceBridge
 import helium314.keyboard.latin.utils.onClickToolbarKey
 import helium314.keyboard.latin.utils.onLongClickToolbarKey
 import kotlinx.coroutines.Dispatchers
@@ -336,7 +337,10 @@ class SuggestionStripView(context: Context, attrs: AttributeSet?, defStyle: Int)
         }
         AudioAndHapticFeedbackManager.getInstance().performHapticAndAudioFeedback(KeyCode.NOT_SPECIFIED, this, HapticEvent.KEY_PRESS)
         if (view === toolbarExpandKey) {
-            setToolbarVisibility(toolbarContainer.visibility != VISIBLE)
+            val ime = context as? android.inputmethodservice.InputMethodService
+            if (ime == null || !SpeechKitVoiceBridge.onMore(ime)) {
+                setToolbarVisibility(toolbarContainer.visibility != VISIBLE)
+            }
         }
 
         // tag for word views is set in SuggestionStripLayoutHelper (setupWordViewsTextAndColor, layoutPunctuationSuggestions)
