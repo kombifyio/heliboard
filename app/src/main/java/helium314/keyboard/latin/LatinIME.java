@@ -1211,7 +1211,11 @@ public class LatinIME extends InputMethodService implements
             return;
         }
         final int stripHeight = mKeyboardSwitcher.isShowingStripContainer() ? mKeyboardSwitcher.getStripContainer().getHeight() : 0;
-        int visibleTopY = inputHeight - visibleKeyboardView.getHeight() - stripHeight;
+        // SpeechKit: the action row is stacked above the keyboard frame, so the window has to reach that much
+        // further up. Everything here is measured from the frame alone, and a row the window does not account
+        // for is drawn and then ignored by the touch dispatcher.
+        final int speechKitActionRowHeight = getSpeechKitActionRowHeight();
+        int visibleTopY = inputHeight - visibleKeyboardView.getHeight() - stripHeight - speechKitActionRowHeight;
         if (Settings.getValues().mIsFloatingKeyboard)
             visibleTopY = getResources().getDisplayMetrics().heightPixels;
 
@@ -1242,6 +1246,29 @@ public class LatinIME extends InputMethodService implements
         outInsets.contentTopInsets = visibleTopY;
         outInsets.visibleTopInsets = visibleTopY;
         mInsetsUpdater.setInsets(outInsets);
+    }
+
+    /**
+     * Height of the SpeechKit action row, or zero while it is not showing.
+     *
+     * The row sits above the keyboard frame in input_view.xml, and the three numbers
+     * {@link #onComputeInsets} derives are all measured from that frame alone. The window's
+     * visible top and the touchable region have to include the row or it is drawn and then
+     * ignored by the touch dispatcher.
+     *
+     * With no SpeechKit host installed the row stays GONE, this returns zero, and all three
+     * numbers are upstream's to the pixel.
+     */
+    private int getSpeechKitActionRowHeight() {
+        if (mInputView == null) {
+            return 0;
+        }
+        final View actionRow = mInputView.findViewById(R.id.speechkit_action_row);
+        // A GONE view keeps the height it last had, so ask about visibility rather than getHeight().
+        if (actionRow == null || actionRow.getVisibility() != View.VISIBLE) {
+            return 0;
+        }
+        return actionRow.getHeight();
     }
 
     public void startShowingInputView(final boolean needsToLoadKeyboard) {
