@@ -93,6 +93,15 @@ object SpeechKitVoiceBridge {
          * side that knows why, and this fork carries no SpeechKit strings.
          */
         fun onToolbarAction(action: String): String?
+
+        /**
+         * Opens the more/shortcuts page over the keys (Gboard's G-logo page).
+         *
+         * Returns false when this host has no such page, so the fork falls
+         * back to expanding its own toolbar. A second call while the page is
+         * open closes it.
+         */
+        fun showShortcuts(service: InputMethodService): Boolean = false
     }
 
     /**
@@ -175,4 +184,14 @@ object SpeechKitVoiceBridge {
         host?.hidePanel()
         host?.onInputViewFinished()
     }
+
+    /**
+     * Opens the host's shortcuts page, or reports that it did not.
+     *
+     * [false] keeps upstream's expand-toolbar behaviour for a standalone
+     * build and for any host that has not implemented the page.
+     */
+    @JvmStatic
+    fun onMore(service: InputMethodService): Boolean =
+        host?.showShortcuts(service) == true
 }
