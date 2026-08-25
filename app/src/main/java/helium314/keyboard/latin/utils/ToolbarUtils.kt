@@ -160,7 +160,7 @@ val defaultToolbarPref by lazy {
 // six provider chips here crowded the suggestions out and read as a second
 // bar. Entry order is render order in SuggestionStripView.pinnedKeys.
 val defaultPinnedToolbarPref = run {
-    val pinned = listOf(VOICE, SPEECHKIT_AGENT_GPT)
+    val pinned = listOf(VOICE, SPEECHKIT_AGENT_DEEPGRAM)
     val others = entries.filterNot { it in pinned || it == CLOSE_HISTORY }
     pinned.joinToString(Separators.ENTRY) { it.name + Separators.KV + true } + Separators.ENTRY +
             others.joinToString(Separators.ENTRY) { it.name + Separators.KV + false }
