@@ -1,11 +1,5 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     id("com.android.library")
-    // Upstream dropped this line (AGP 9 compiles Kotlin itself). The consuming
-    // kombify-SpeechKit build is still on AGP 8, where the Kotlin plugin has to
-    // be applied explicitly; remove it when SpeechKit moves to AGP 9.
-    kotlin("android")
     // Versions come from the consuming build's plugin management, not from here:
     // this module is compiled inside kombify-SpeechKit's Gradle build, where the
     // Kotlin plugin can only be on the classpath once. Upstream's own build still
@@ -19,12 +13,6 @@ android {
 
     defaultConfig {
         minSdk = 21
-        // A library ignores targetSdk for packaging, but Robolectric reads it to pick
-        // the emulated SDK level, and ContextCompat.registerReceiver branches on that:
-        // below 34 it emulates RECEIVER_NOT_EXPORTED via a runtime permission check that
-        // LatinIME.onCreate cannot satisfy under test. Keep it at upstream's value.
-        @Suppress("DEPRECATION")
-        targetSdk = 37
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -79,20 +67,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // Upstream derives the Kotlin jvmTarget from compileOptions under AGP 9; with
-    // the explicit Kotlin plugin of an AGP 8 consumer it is set here.
-    kotlin {
-        target {
-            compilerOptions {
-                jvmTarget.set(JvmTarget.JVM_17)
-            }
-        }
-    }
-
     namespace = "helium314.keyboard.latin"
     lint {
         abortOnError = true
     }
+}
+
+androidComponents.beforeVariants(androidComponents.selector().withBuildType("runTests")) {
+    (it as com.android.build.api.variant.HasHostTestsBuilder).hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]?.enable = true
 }
 
 dependencies {
